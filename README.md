@@ -155,3 +155,23 @@ cd app && pytest --cov=monitor --cov-report=term-missing -v
 Infrastructure (Kubernetes, Helm, ArgoCD, GitHub Actions, Prometheus/Grafana/Loki stacks, Terraform, Sealed Secrets, NetworkPolicies, runbooks) is intentionally not included — you will add this layer separately.
 
 For alerting: the `AlertChannel` model is in place as a data model. Wire up actual delivery (email via Django's email backend, or webhook HTTP POST) once the infra layer is ready.
+
+## Environment Setup
+
+Create a `.env` file in the project root before running:
+
+```bash
+cat > .env << 'EOF'
+SECRET_KEY=please-generate-a-secure-key-using-django-secret-key-generator
+DEBUG=False
+ALLOWED_HOSTS=localhost,127.0.0.1
+DATABASE_URL=postgres://uptime:uptime@db:5432/uptime
+REDIS_URL=redis://redis:6379/0
+POSTGRES_USER=uptime
+POSTGRES_PASSWORD=uptime
+POSTGRES_DB=uptime
+PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
+EOF
+```
+
+> Generate a secure `SECRET_KEY` with: `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"`
