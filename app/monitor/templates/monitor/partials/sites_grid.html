@@ -1,0 +1,4 @@
+{% load humanize %}
+{% for site in sites %}
+  {% include "monitor/partials/site_card.html" with site=site %}
+{% endfor %}

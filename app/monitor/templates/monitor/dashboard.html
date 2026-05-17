@@ -1,0 +1,39 @@
+{% extends "monitor/base.html" %}
+{% load humanize %}
+
+{% block title %}Dashboard — Uptime Monitor{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+    <p class="text-sm text-gray-500 mt-1">{{ sites|length }} site{{ sites|length|pluralize }} monitored</p>
+  </div>
+  <a href="/sites/add/"
+     class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+    + Add Site
+  </a>
+</div>
+
+{% if sites %}
+  <div id="sites-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for site in sites %}
+      {% include "monitor/partials/site_card.html" with site=site %}
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="text-center py-16">
+    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+      </svg>
+    </div>
+    <h2 class="text-xl font-semibold text-gray-900 mb-2">No sites yet</h2>
+    <p class="text-gray-500 mb-4">Add your first URL to start monitoring.</p>
+    <a href="/sites/add/" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700">
+      Add your first site
+    </a>
+  </div>
+{% endif %}
+{% endblock %}

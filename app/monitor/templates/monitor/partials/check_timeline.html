@@ -1,0 +1,11 @@
+{% load humanize %}
+<div class="flex gap-0.5 flex-wrap">
+  {% for check in checks %}
+  <div class="w-2 h-6 rounded-sm cursor-pointer
+    {% if check.is_up %}bg-green-400 hover:bg-green-600{% else %}bg-red-400 hover:bg-red-600{% endif %}"
+    title="{{ check.timestamp|naturaltime }} — {% if check.is_up %}UP{% else %}DOWN{% endif %}{% if check.response_time_ms %} ({{ check.response_time_ms }}ms){% endif %}{% if check.error_message %} — {{ check.error_message }}{% endif %}">
+  </div>
+  {% empty %}
+  <p class="text-gray-400 text-sm">No checks recorded yet.</p>
+  {% endfor %}
+</div>

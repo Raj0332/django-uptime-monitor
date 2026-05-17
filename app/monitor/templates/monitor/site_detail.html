@@ -1,0 +1,156 @@
+{% extends "monitor/base.html" %}
+{% load humanize %}
+
+{% block title %}{{ site.name }} — Uptime Monitor{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="flex items-start justify-between mb-6">
+  <div>
+    <div class="flex items-center gap-3 mb-1">
+      <h1 class="text-2xl font-bold text-gray-900">{{ site.name }}</h1>
+      {% with status=site.current_status %}
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium
+        {% if status == 'up' %}bg-green-100 text-green-800
+        {% elif status == 'down' %}bg-red-100 text-red-800
+        {% else %}bg-gray-100 text-gray-500{% endif %}">
+        <span class="w-2 h-2 rounded-full
+          {% if status == 'up' %}bg-green-500
+          {% elif status == 'down' %}bg-red-500 animate-pulse
+          {% else %}bg-gray-400{% endif %}"></span>
+        {{ status|upper }}
+      </span>
+      {% endwith %}
+    </div>
+    <a href="{{ site.url }}" target="_blank" rel="noopener" class="text-sm text-gray-500 hover:text-blue-500">
+      {{ site.url }}
+    </a>
+  </div>
+  <div class="flex gap-2">
+    <form method="post" action="{% url 'site_toggle' site.id %}">
+      {% csrf_token %}
+      <button type="submit"
+              class="px-4 py-2 text-sm font-medium rounded-lg border transition-colors
+                {% if site.is_active %}border-yellow-300 text-yellow-700 hover:bg-yellow-50{% else %}border-green-300 text-green-700 hover:bg-green-50{% endif %}">
+        {% if site.is_active %}Pause{% else %}Resume{% endif %}
+      </button>
+    </form>
+    <form method="post" action="{% url 'site_delete' site.id %}"
+          onsubmit="return confirm('Delete {{ site.name }}? All data will be lost.')">
+      {% csrf_token %}
+      <button type="submit"
+              class="px-4 py-2 text-sm font-medium rounded-lg border border-red-300 text-red-700 hover:bg-red-50 transition-colors">
+        Delete
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Stats grid -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+  {% with u24=site.uptime_24h_percent u7=site.uptime_7d_percent rt=site.avg_response_time_24h_ms %}
+  <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+    <div class="text-2xl font-bold {% if u24 >= 99 %}text-green-600{% elif u24 >= 95 %}text-yellow-500{% else %}text-red-600{% endif %}">
+      {{ u24|floatformat:2 }}%
+    </div>
+    <div class="text-xs text-gray-400 mt-1">24h uptime</div>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+    <div class="text-2xl font-bold {% if u7 >= 99 %}text-green-600{% elif u7 >= 95 %}text-yellow-500{% else %}text-red-600{% endif %}">
+      {{ u7|floatformat:2 }}%
+    </div>
+    <div class="text-xs text-gray-400 mt-1">7d uptime</div>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+    <div class="text-2xl font-bold text-blue-600">
+      {% if rt %}{{ rt }}ms{% else %}—{% endif %}
+    </div>
+    <div class="text-xs text-gray-400 mt-1">avg response (24h)</div>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+    <div class="text-2xl font-bold text-gray-700">
+      {{ site.check_interval_seconds }}s
+    </div>
+    <div class="text-xs text-gray-400 mt-1">check interval</div>
+  </div>
+  {% endwith %}
+</div>
+
+<!-- Check timeline -->
+<div class="bg-white rounded-xl border border-gray-200 p-5 mb-6">
+  <h2 class="font-semibold text-gray-800 mb-3">Check Timeline (last {{ recent_checks|length }})</h2>
+  {% include "monitor/partials/check_timeline.html" with checks=recent_checks %}
+</div>
+
+<!-- Incidents table -->
+<div class="bg-white rounded-xl border border-gray-200 p-5 mb-6">
+  <h2 class="font-semibold text-gray-800 mb-3">Recent Incidents</h2>
+  {% if recent_incidents %}
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm">
+      <thead>
+        <tr class="text-left text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-gray-100">
+          <th class="pb-2 pr-6">Started</th>
+          <th class="pb-2 pr-6">Ended</th>
+          <th class="pb-2 pr-6">Duration</th>
+          <th class="pb-2">Notes</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for incident in recent_incidents %}
+        <tr class="py-2">
+          <td class="py-2 pr-6 text-gray-700">{{ incident.started_at|naturaltime }}</td>
+          <td class="py-2 pr-6 text-gray-700">
+            {% if incident.ended_at %}{{ incident.ended_at|naturaltime }}{% else %}<span class="text-red-500 font-medium">Ongoing</span>{% endif %}
+          </td>
+          <td class="py-2 pr-6 text-gray-600">
+            {% if incident.duration_seconds %}
+              {% if incident.duration_seconds >= 3600 %}
+                {{ incident.duration_seconds|divisibleby:3600 }}h
+              {% elif incident.duration_seconds >= 60 %}
+                {% widthratio incident.duration_seconds 60 1 %}m
+              {% else %}
+                {{ incident.duration_seconds }}s
+              {% endif %}
+            {% elif not incident.ended_at %}
+              <span class="text-red-400">—</span>
+            {% else %}
+              &lt;1s
+            {% endif %}
+          </td>
+          <td class="py-2 text-gray-400">{{ incident.notes|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-gray-400 text-sm">No incidents recorded. Great job!</p>
+  {% endif %}
+</div>
+
+<!-- Site config summary -->
+<div class="bg-white rounded-xl border border-gray-200 p-5">
+  <h2 class="font-semibold text-gray-800 mb-3">Configuration</h2>
+  <dl class="grid grid-cols-2 gap-4 text-sm">
+    <div>
+      <dt class="text-gray-400">Expected status</dt>
+      <dd class="text-gray-800 font-medium">{{ site.expected_status_code }}</dd>
+    </div>
+    <div>
+      <dt class="text-gray-400">Timeout</dt>
+      <dd class="text-gray-800 font-medium">{{ site.timeout_seconds }}s</dd>
+    </div>
+    <div>
+      <dt class="text-gray-400">Created</dt>
+      <dd class="text-gray-800 font-medium">{{ site.created_at|naturaltime }}</dd>
+    </div>
+    <div>
+      <dt class="text-gray-400">Status</dt>
+      <dd class="font-medium {% if site.is_active %}text-green-600{% else %}text-yellow-600{% endif %}">
+        {% if site.is_active %}Active{% else %}Paused{% endif %}
+      </dd>
+    </div>
+  </dl>
+</div>
+{% endblock %}

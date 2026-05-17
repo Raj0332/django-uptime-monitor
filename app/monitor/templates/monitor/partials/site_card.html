@@ -1,0 +1,88 @@
+{% load humanize %}
+<div id="site-card-{{ site.id }}"
+     class="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow p-5"
+     hx-get="{% url 'site_card' site.id %}"
+     hx-trigger="every 30s"
+     hx-swap="outerHTML">
+
+  <!-- Header: name + status dot -->
+  <div class="flex items-start justify-between mb-3">
+    <div class="min-w-0 flex-1">
+      <h3 class="font-semibold text-gray-900 text-base truncate">{{ site.name }}</h3>
+      <a href="{{ site.url }}" target="_blank" rel="noopener"
+         class="text-xs text-gray-400 hover:text-blue-500 truncate block max-w-xs mt-0.5">
+        {{ site.url }}
+      </a>
+    </div>
+    <!-- Status indicator -->
+    <div class="ml-3 flex-shrink-0">
+      {% with status=site.current_status %}
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium
+        {% if status == 'up' %}bg-green-100 text-green-800
+        {% elif status == 'down' %}bg-red-100 text-red-800
+        {% else %}bg-gray-100 text-gray-500{% endif %}">
+        <span class="w-1.5 h-1.5 rounded-full
+          {% if status == 'up' %}bg-green-500
+          {% elif status == 'down' %}bg-red-500 animate-pulse
+          {% else %}bg-gray-400{% endif %}"></span>
+        {{ status|upper }}
+      </span>
+      {% endwith %}
+    </div>
+  </div>
+
+  <!-- Uptime percentage -->
+  <div class="mb-3">
+    {% with uptime=site.uptime_24h_percent %}
+    <div class="flex items-baseline gap-1">
+      <span class="text-2xl font-bold
+        {% if uptime >= 99 %}text-green-600
+        {% elif uptime >= 95 %}text-yellow-500
+        {% else %}text-red-600{% endif %}">
+        {{ uptime|floatformat:2 }}%
+      </span>
+      <span class="text-xs text-gray-400">24h uptime</span>
+    </div>
+    {% endwith %}
+  </div>
+
+  <!-- Response time + last checked -->
+  <div class="flex items-center justify-between text-xs text-gray-500 mb-4">
+    <span>
+      {% with rt=site.avg_response_time_24h_ms %}
+        {% if rt %}{{ rt }}ms avg{% else %}—{% endif %}
+      {% endwith %}
+    </span>
+    <span>
+      {% if site.last_checked_at %}
+        {{ site.last_checked_at|naturaltime }}
+      {% else %}
+        Not checked yet
+      {% endif %}
+    </span>
+  </div>
+
+  <!-- Action buttons -->
+  <div class="flex items-center gap-2 pt-3 border-t border-gray-100">
+    <a href="{% url 'site_detail' site.id %}"
+       class="flex-1 text-center text-xs font-medium text-blue-600 hover:text-blue-800 py-1.5 rounded-md hover:bg-blue-50 transition-colors">
+      Details
+    </a>
+    <form method="post" action="{% url 'site_toggle' site.id %}" class="flex-1">
+      {% csrf_token %}
+      <button type="submit"
+              class="w-full text-xs font-medium py-1.5 rounded-md transition-colors
+                {% if site.is_active %}text-yellow-600 hover:bg-yellow-50{% else %}text-green-600 hover:bg-green-50{% endif %}">
+        {% if site.is_active %}Pause{% else %}Resume{% endif %}
+      </button>
+    </form>
+    <form method="post" action="{% url 'site_delete' site.id %}" class="flex-1"
+          onsubmit="return confirm('Delete {{ site.name }}? This cannot be undone.')">
+      {% csrf_token %}
+      <button type="submit"
+              class="w-full text-xs font-medium text-red-600 hover:bg-red-50 py-1.5 rounded-md transition-colors">
+        Delete
+      </button>
+    </form>
+  </div>
+</div>
