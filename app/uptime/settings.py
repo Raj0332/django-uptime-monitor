@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "monitor.apps.MonitorConfig",
+    'django.contrib.humanize',
 ]
 
 MIDDLEWARE = [
