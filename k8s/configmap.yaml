@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: uptime-config
+data:
+  DJANGO_SETTINGS_MODULE: uptime.settings
+  REDIS_URL: redis://redis:6379/0
