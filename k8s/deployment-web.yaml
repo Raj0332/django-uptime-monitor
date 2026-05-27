@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: your-dockerhub-username/uptime-monitor:latest
+          image: rajkumar332/uptime-monitor:latest
           ports:
             - containerPort: 8000
           envFrom:
