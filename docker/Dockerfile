@@ -18,9 +18,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends libpq5 curl \
 COPY --from=builder /root/.local /home/app/.local
 COPY --chown=app:app app/ /app/
 COPY --chown=app:app docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh \
-    && mkdir -p /tmp/prometheus_multiproc \
-    && chown app:app /tmp/prometheus_multiproc
+
+RUN sed -i 's/\r$//' /entrypoint.sh && \
+    chmod +x /entrypoint.sh
 
 USER app
 WORKDIR /app
