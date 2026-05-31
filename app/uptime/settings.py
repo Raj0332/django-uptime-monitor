@@ -12,7 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env(
     DEBUG=(bool, False),
-    ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
+    ALLOWED_HOSTS = ["*"],
     TIME_ZONE=(str, "UTC"),
     PROMETHEUS_MULTIPROC_DIR=(str, "/tmp/prometheus_multiproc"),
 )
@@ -21,7 +21,7 @@ environ.Env.read_env(BASE_DIR / ".env", overwrite=False)
 
 SECRET_KEY = env("SECRET_KEY")  # raises ImproperlyConfigured if missing
 DEBUG = env("DEBUG")
-ALLOWED_HOSTS = env("ALLOWED_HOSTS")
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost"])
 
 # ---------------------------------------------------------------------------
 # Application definition
