@@ -150,6 +150,119 @@ cd app && pytest --cov=monitor --cov-report=term-missing -v
 - [x] `CELERY_TASK_ACKS_LATE=True` for graceful shutdown
 - [x] `X-Request-ID` propagated on all requests
 
+## Kubernetes Deployment (Phase 2)
+
+### Prerequisites
+
+| Tool | Purpose | Install |
+|------|---------|---------|
+| Docker Desktop | Container runtime | [docker.com](https://docker.com) |
+| minikube | Local Kubernetes cluster | `winget install Kubernetes.minikube` |
+| kubectl | K8s CLI | `winget install Kubernetes.kubectl` |
+
+### K8s Manifests
+
+```
+k8s/
+├── namespace.yaml          Isolated environment (namespace: uptime)
+├── configmap.yaml          Non-sensitive env vars (DATABASE_URL, REDIS_URL)
+├── secret.yaml             Sensitive values (SECRET_KEY, POSTGRES_PASSWORD) base64 encoded
+├── postgres.yaml           PostgreSQL deployment + PersistentVolumeClaim + Service
+├── redis.yaml              Redis deployment + Service
+├── deployment-web.yaml     Django app deployment with liveness/readiness probes
+├── deployment-celery.yaml  Celery worker deployment
+├── deployment-beat.yaml    Celery beat scheduler deployment
+└── service-web.yaml        NodePort service to expose web app externally
+```
+
+### Start minikube
+
+```powershell
+minikube start --driver=docker --memory=2048 --cpus=2
+kubectl get nodes
+# Expected: minikube   Ready   control-plane
+```
+
+### Build and push Docker image
+
+```powershell
+# Login to Docker Hub
+docker login
+
+# Build for linux/amd64 (required for minikube on Windows)
+docker buildx build --platform linux/amd64 -t rajkumar332/uptime-monitor:latest --push -f docker/Dockerfile .
+```
+
+### Apply manifests (order matters)
+
+```powershell
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/secret.yaml
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/postgres.yaml
+kubectl apply -f k8s/redis.yaml
+kubectl apply -f k8s/service-web.yaml
+kubectl apply -f k8s/deployment-web.yaml
+kubectl apply -f k8s/deployment-celery.yaml
+kubectl apply -f k8s/deployment-beat.yaml
+```
+
+### Verify all pods are running
+
+```powershell
+kubectl get pods -n uptime
+# Expected output:
+# NAME              READY   STATUS    RESTARTS
+# postgres-xxx      1/1     Running   0
+# redis-xxx         1/1     Running   0
+# web-xxx           1/1     Running   0
+# celery-xxx        1/1     Running   0
+# beat-xxx          1/1     Running   0
+```
+
+### Open the app
+
+```powershell
+minikube service web -n uptime
+```
+
+### Create superuser
+
+```powershell
+kubectl exec -it deployment/web -n uptime -- python manage.py createsuperuser
+```
+
+### Useful kubectl commands
+
+```powershell
+# Check pod logs
+kubectl logs -n uptime deployment/web
+kubectl logs -n uptime deployment/celery
+kubectl logs -n uptime deployment/beat
+
+# Restart a deployment
+kubectl rollout restart deployment/web -n uptime
+
+# Check all resources
+kubectl get all -n uptime
+
+# Describe a pod (shows events and errors)
+kubectl describe pod -n uptime
+
+# Delete everything and start fresh
+kubectl delete namespace uptime
+```
+
+### Issues faced and fixes
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| `exec format error` | Image built on Mac ARM, ran on Windows AMD64 | Rebuild with `--platform linux/amd64` |
+| `could not translate host name 'db'` | docker-compose uses `db`, K8s service named `postgres` | Added `DATABASE_URL` with `postgres` host in configmap |
+| `configmap uptime-config not found` | ConfigMap missing `namespace: uptime` | Added `namespace: uptime` to configmap metadata |
+| `site can't be reached` | Service type was `ClusterIP` | Changed to `NodePort` for external access |
+| `CrashLoopBackOff` | Web pod started before postgres/redis were ready | Applied postgres and redis manifests first |
+
 ## Next Steps (Out of Scope)
 
 Infrastructure (Kubernetes, Helm, ArgoCD, GitHub Actions, Prometheus/Grafana/Loki stacks, Terraform, Sealed Secrets, NetworkPolicies, runbooks) is intentionally not included — you will add this layer separately.
