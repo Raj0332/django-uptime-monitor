@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: beat
+  namespace: uptime
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: beat
+  template:
+    metadata:
+      labels:
+        app: beat
+    spec:
+      containers:
+        - name: beat
+          image: rajkumar332/uptime-monitor:latest
+          command: ["/entrypoint.sh", "beat"]
+          envFrom:
+            - configMapRef:
+                name: uptime-config
+            - secretRef:
+                name: uptime-secret
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"

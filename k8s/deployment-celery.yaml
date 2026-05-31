@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery
+  namespace: uptime
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: celery
+  template:
+    metadata:
+      labels:
+        app: celery
+    spec:
+      containers:
+        - name: celery
+          image: rajkumar332/uptime-monitor:latest
+          command: ["/entrypoint.sh", "worker"]
+          envFrom:
+            - configMapRef:
+                name: uptime-config
+            - secretRef:
+                name: uptime-secret
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
