@@ -1,0 +1,29 @@
+# Celery worker — same image as web, but overrides the container command.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery
+  labels:
+    {{- include "uptime-monitor.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.celery.replicas }}
+  selector:
+    matchLabels:
+      app: celery
+  template:
+    metadata:
+      labels:
+        app: celery
+    spec:
+      containers:
+        - name: celery
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: {{ toYaml .Values.celery.command | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: uptime-config
+            - secretRef:
+                name: uptime-secret
+          resources:
+            {{- toYaml .Values.celery.resources | nindent 12 }}

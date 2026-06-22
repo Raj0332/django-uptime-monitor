@@ -1,0 +1,29 @@
+# Celery beat (scheduler) — same image, command overridden to "beat".
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: beat
+  labels:
+    {{- include "uptime-monitor.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.beat.replicas }}
+  selector:
+    matchLabels:
+      app: beat
+  template:
+    metadata:
+      labels:
+        app: beat
+    spec:
+      containers:
+        - name: beat
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: {{ toYaml .Values.beat.command | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: uptime-config
+            - secretRef:
+                name: uptime-secret
+          resources:
+            {{- toYaml .Values.beat.resources | nindent 12 }}

@@ -1,0 +1,11 @@
+# ConfigMap — non-secret env vars injected into web/celery/beat via envFrom.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: uptime-config
+  labels:
+    {{- include "uptime-monitor.labels" . | nindent 4 }}
+data:
+  DJANGO_SETTINGS_MODULE: {{ .Values.config.djangoSettingsModule | quote }}
+  REDIS_URL: {{ .Values.config.redisUrl | quote }}
+  DATABASE_URL: {{ .Values.config.databaseUrl | quote }}

@@ -1,0 +1,5 @@
+# Files matching these patterns are excluded when packaging the chart.
+.DS_Store
+.git/
+*.tmp
+*.bak
