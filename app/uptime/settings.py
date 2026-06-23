@@ -12,7 +12,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env(
     DEBUG=(bool, False),
-    ALLOWED_HOSTS = ["*"],
     TIME_ZONE=(str, "UTC"),
     PROMETHEUS_MULTIPROC_DIR=(str, "/tmp/prometheus_multiproc"),
 )
