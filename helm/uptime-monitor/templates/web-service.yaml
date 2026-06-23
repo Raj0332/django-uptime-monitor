@@ -1,0 +1,14 @@
+# Web Service. type is configurable (NodePort for minikube access).
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  labels:
+    {{- include "uptime-monitor.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: web
+  ports:
+    - port: {{ .Values.web.service.port }}
+      targetPort: 8000
+  type: {{ .Values.web.service.type }}
