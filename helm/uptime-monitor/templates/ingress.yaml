@@ -1,0 +1,36 @@
+# ingress.yaml — HTTP routing to the web Service by hostname, instead of
+# NodePort. Gated by ingress.enabled (renders nothing when off).
+# On minikube: `minikube addons enable ingress`, then point ingress.host at
+# `minikube ip` in your hosts file. The host is auto-added to Django's
+# ALLOWED_HOSTS / CSRF_TRUSTED_ORIGINS in configmap.yaml.
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+  labels:
+    {{- include "uptime-monitor.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- with .Values.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: {{ .Values.web.service.port }}
+{{- end }}

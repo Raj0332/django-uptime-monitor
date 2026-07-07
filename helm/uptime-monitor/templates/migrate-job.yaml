@@ -1,0 +1,52 @@
+# migrate-job.yaml — runs `manage.py migrate` ONCE per install/upgrade as a Helm
+# hook, instead of on every web pod start. This is what makes it safe to scale
+# web > 1 (otherwise N replicas would race to migrate the same database).
+#
+# Hook choice — post-install + pre-upgrade:
+#   - post-install (NOT pre-install): on a FRESH install, postgres doesn't exist
+#     yet during the pre-install phase, so we run AFTER the chart's resources are
+#     created.
+#   - pre-upgrade: on UPGRADES postgres is already running, so migrate before the
+#     new app code rolls out.
+# "Resource created" != "pod ready", so the initContainer blocks until postgres
+# actually accepts connections before we attempt to migrate.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: uptime-migrate
+  labels:
+    {{- include "uptime-monitor.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+    # before-hook-creation: delete the previous Job before creating a new one
+    #   (Jobs are immutable, so re-running the hook would otherwise fail).
+    # hook-succeeded: remove the Job once it completes successfully.
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        app: uptime-migrate
+    spec:
+      restartPolicy: Never
+      initContainers:
+        # Wait until postgres is accepting connections. Uses the postgres image
+        # because it ships `pg_isready`.
+        - name: wait-for-postgres
+          image: {{ .Values.postgres.image | quote }}
+          command:
+            - sh
+            - -c
+            - until pg_isready -h postgres -p 5432 -U {{ .Values.postgres.user }}; do echo "waiting for postgres..."; sleep 2; done
+      containers:
+        - name: migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/entrypoint.sh", "migrate"]
+          envFrom:
+            - configMapRef:
+                name: uptime-config
+            - secretRef:
+                name: uptime-secret

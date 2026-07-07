@@ -6,7 +6,9 @@ metadata:
   labels:
     {{- include "uptime-monitor.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.web.replicas }}
+  {{- if not .Values.web.autoscaling.enabled }}
+  replicas: {{ .Values.web.replicas }}   # omitted when autoscaling is on, so the HPA owns the count
+  {{- end }}
   selector:
     matchLabels:
       app: web

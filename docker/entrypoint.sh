@@ -1,11 +1,22 @@
 #!/bin/sh
 set -e
 
+# Run Django migrations. In Kubernetes this is done ONCE by the migrate Job /
+# Helm hook, so web pods set RUN_MIGRATIONS_ON_START=false and skip it here —
+# otherwise every web replica would race to migrate on `helm upgrade` / scale-up.
+# In docker-compose the var is unset, so it defaults to "true" and web migrates
+# on start exactly as before.
+run_migrations() {
+  echo "Running migrations..."
+  python manage.py makemigrations monitor --noinput
+  python manage.py migrate --noinput
+}
+
 case "$1" in
   web)
-    echo "Running migrations..."
-    python manage.py makemigrations monitor --noinput
-    python manage.py migrate --noinput
+    if [ "${RUN_MIGRATIONS_ON_START:-true}" = "true" ]; then
+      run_migrations
+    fi
 
     echo "Collecting static files..."
     python manage.py collectstatic --noinput
@@ -19,6 +30,10 @@ case "$1" in
       --access-logfile - \
       --error-logfile - \
       --log-level info
+    ;;
+
+  migrate)
+    run_migrations
     ;;
 
   worker)
