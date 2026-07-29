@@ -263,9 +263,101 @@ kubectl delete namespace uptime
 | `site can't be reached` | Service type was `ClusterIP` | Changed to `NodePort` for external access |
 | `CrashLoopBackOff` | Web pod started before postgres/redis were ready | Applied postgres and redis manifests first |
 
+## Helm Deployment (Phase 3)
+
+The same workload, packaged as a Helm chart. Instead of nine `kubectl apply`
+commands with hardcoded values, one command deploys everything and every knob
+lives in [values.yaml](helm/uptime-monitor/values.yaml).
+
+### Chart structure
+
+```
+helm/uptime-monitor/
+├── Chart.yaml              Chart identity + version (0.2.0)
+├── values.yaml             All config knobs (image, resources, toggles)
+└── templates/
+    ├── _helpers.tpl        Reusable label snippet
+    ├── NOTES.txt           Post-install instructions
+    ├── configmap.yaml      Non-secret env (auto-injects ingress host)
+    ├── secret.yaml         Secrets (Helm base64-encodes for you)
+    ├── web-deployment.yaml, web-service.yaml
+    ├── celery-deployment.yaml, beat-deployment.yaml
+    ├── postgres.yaml, redis.yaml
+    ├── ingress.yaml        HTTP routing (toggle: ingress.enabled)
+    ├── hpa.yaml            Autoscaling (toggle: web.autoscaling.enabled)
+    └── migrate-job.yaml    DB migrations as a Helm hook (post-install,pre-upgrade)
+```
+
+### Prerequisite
+
+| Tool | Purpose | Install |
+|------|---------|---------|
+| Helm | K8s package manager | `winget install Helm.Helm` |
+
+### Install / upgrade
+
+```powershell
+# Image must be built/pushed first (chart uses rajkumar332/uptime-monitor:latest)
+docker buildx build --platform linux/amd64 -t rajkumar332/uptime-monitor:latest --push -f docker/Dockerfile .
+
+# Deploy (or update) the release. --create-namespace makes the uptime namespace.
+helm upgrade --install uptime ./helm/uptime-monitor -n uptime --create-namespace
+
+helm list -n uptime
+kubectl get pods -n uptime
+minikube service web -n uptime
+```
+
+> If you previously ran `kubectl apply -f k8s/...` into the `uptime` namespace,
+> delete it first (`kubectl delete namespace uptime`) — those resources aren't
+> owned by Helm and would collide with `helm install`.
+
+### Optional features (off by default)
+
+| Toggle | Default | What it does | minikube requirement |
+|--------|---------|--------------|----------------------|
+| `ingress.enabled` | `false` | Hostname routing via an Ingress instead of NodePort | `minikube addons enable ingress` |
+| `web.autoscaling.enabled` | `false` | CPU-based HorizontalPodAutoscaler for web (1→5 pods @ 70%) | `minikube addons enable metrics-server` |
+| migrations (always on) | — | Run once via a Helm hook Job, not on every web pod start | — |
+
+**DB migrations** run in a `Job` gated by the `post-install,pre-upgrade` Helm
+hook (with a `wait-for-postgres` init container), instead of on every web pod
+start. This is what makes it safe for web to scale past one replica — the web
+entrypoint skips migrations in Kubernetes (`RUN_MIGRATIONS_ON_START=false`)
+while docker-compose keeps migrating on start.
+
+Enable Ingress + autoscaling:
+
+```powershell
+minikube addons enable ingress
+minikube addons enable metrics-server
+
+helm upgrade --install uptime ./helm/uptime-monitor -n uptime --create-namespace `
+  --set ingress.enabled=true `
+  --set web.autoscaling.enabled=true
+
+kubectl get ingress,hpa,job -n uptime
+
+# Map the ingress host, then open http://uptime.local/  (run as Administrator)
+Add-Content C:\Windows\System32\drivers\etc\hosts "$(minikube ip) uptime.local"
+```
+
+When `ingress.enabled=true`, the host is automatically appended to Django's
+`ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` via the ConfigMap.
+
+### Lifecycle & inspection
+
+```powershell
+helm template uptime ./helm/uptime-monitor        # render YAML locally (no cluster)
+helm lint ./helm/uptime-monitor                   # validate the chart
+helm history uptime -n uptime                      # every revision Helm has recorded
+helm rollback uptime 1 -n uptime                   # roll back to revision 1
+helm uninstall uptime -n uptime                    # delete all resources at once
+```
+
 ## Next Steps (Out of Scope)
 
-Infrastructure (Kubernetes, Helm, ArgoCD, GitHub Actions, Prometheus/Grafana/Loki stacks, Terraform, Sealed Secrets, NetworkPolicies, runbooks) is intentionally not included — you will add this layer separately.
+Higher layers (ArgoCD/GitOps, GitHub Actions CI/CD, Prometheus/Grafana/Loki stacks, Terraform, Sealed Secrets, NetworkPolicies, runbooks) are intentionally not included — you will add this layer separately.
 
 For alerting: the `AlertChannel` model is in place as a data model. Wire up actual delivery (email via Django's email backend, or webhook HTTP POST) once the infra layer is ready.
 

@@ -8,6 +8,14 @@ metadata:
 data:
   DJANGO_SETTINGS_MODULE: {{ .Values.config.djangoSettingsModule | quote }}
   REDIS_URL: {{ .Values.config.redisUrl | quote }}
-  ALLOWED_HOSTS: {{ .Values.config.allowedHosts | quote }}
   # DATABASE_URL lives in the Secret, not here — it embeds the DB password,
   # and ConfigMaps are not a place for credentials.
+  # web pods skip migrations (the migrate Job/hook owns them) so web can scale > 1
+  RUN_MIGRATIONS_ON_START: {{ .Values.config.runMigrationsOnStart | quote }}
+  # When ingress is on, its host is auto-added to ALLOWED_HOSTS + CSRF origins.
+  ALLOWED_HOSTS: {{ if .Values.ingress.enabled }}{{ printf "%s,%s" .Values.ingress.host .Values.config.allowedHosts | quote }}{{ else }}{{ .Values.config.allowedHosts | quote }}{{ end }}
+  {{- if .Values.ingress.enabled }}
+  CSRF_TRUSTED_ORIGINS: {{ printf "http://%s,https://%s" .Values.ingress.host .Values.ingress.host | quote }}
+  {{- else if .Values.config.csrfTrustedOrigins }}
+  CSRF_TRUSTED_ORIGINS: {{ .Values.config.csrfTrustedOrigins | quote }}
+  {{- end }}

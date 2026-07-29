@@ -3,8 +3,13 @@
 Check everything is running:
   kubectl get pods -n {{ .Release.Namespace }}
 
+{{- if .Values.ingress.enabled }}
+Access the web app (ingress):
+  http://{{ .Values.ingress.host }}/   (ensure {{ .Values.ingress.host }} resolves to `minikube ip`)
+{{- else }}
 Access the web app (minikube):
   minikube service web -n {{ .Release.Namespace }}
+{{- end }}
 
 Useful Helm commands:
   helm status {{ .Release.Name }} -n {{ .Release.Namespace }}

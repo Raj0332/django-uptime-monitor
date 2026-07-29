@@ -17,7 +17,12 @@ image:
 config:
   djangoSettingsModule: uptime.settings
   redisUrl: redis://redis:6379/0
+  # Comma-separated. When ingress.enabled, ingress.host is auto-appended (see configmap.yaml).
   allowedHosts: "localhost,127.0.0.1,web,.svc,.cluster.local"
+  # Only used when ingress is DISABLED; with ingress on, origins are derived from the host.
+  csrfTrustedOrigins: ""
+  # "false" => web pods skip migrations (the migrate Job/hook owns them) so web can scale > 1.
+  runMigrationsOnStart: "false"
 
 # ---- Secret values (PLAINTEXT here; Helm base64-encodes them for you) ----
 # This is a teaching convenience. In real production you'd use sealed-secrets,
@@ -38,12 +43,33 @@ postgres:
 redis:
   image: redis:7-alpine
 
+# ---- Ingress (disabled by default). Enable for hostname routing instead of
+# NodePort. On minikube: `minikube addons enable ingress`, then map ingress.host
+# to `minikube ip` in your hosts file. ----
+ingress:
+  enabled: false
+  className: nginx
+  host: uptime.local
+  annotations: {}
+  # TLS blocks, e.g.:
+  #   - secretName: uptime-tls
+  #     hosts: [uptime.local]
+  tls: []
+
 # ---- Django web server ----
 web:
   replicas: 1
   service:
     type: NodePort        # NodePort so `minikube service` can reach it
     port: 8000
+  # CPU-based autoscaling. When enabled, the Deployment's replicas field is
+  # omitted so the HPA owns the replica count (see web-deployment.yaml).
+  # Requires metrics-server: `minikube addons enable metrics-server`.
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
   resources:
     requests:
       cpu: "100m"

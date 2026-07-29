@@ -1,0 +1,27 @@
+# hpa.yaml — HorizontalPodAutoscaler for the web Deployment. Gated by
+# web.autoscaling.enabled, so it renders NOTHING unless you turn it on.
+# Requires the metrics-server: `minikube addons enable metrics-server`.
+# HPA reads CPU usage as a % of the container's resource *requests*, which is
+# why web must (and does) set resources.requests.cpu.
+{{- if .Values.web.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: web
+  labels:
+    {{- include "uptime-monitor.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: web
+  minReplicas: {{ .Values.web.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.web.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.web.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}

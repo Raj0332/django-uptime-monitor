@@ -21,6 +21,7 @@ environ.Env.read_env(BASE_DIR / ".env", overwrite=False)
 SECRET_KEY = env("SECRET_KEY")  # raises ImproperlyConfigured if missing
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost"])
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])  # needed when accessed via an Ingress host
 
 # ---------------------------------------------------------------------------
 # Application definition
