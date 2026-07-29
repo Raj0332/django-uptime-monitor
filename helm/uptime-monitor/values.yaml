@@ -10,12 +10,14 @@ image:
   pullPolicy: IfNotPresent   # IfNotPresent = don't re-pull if already on the node
 
 # ---- Non-secret config -> rendered into a ConfigMap ----
-# NOTE: redisUrl/databaseUrl reference the service names "redis"/"postgres".
-# Those service names are kept fixed in the templates so these URLs keep working.
+# NOTE: redisUrl references the service name "redis"; that name is kept fixed
+# in the templates so the URL keeps working. DATABASE_URL is NOT here — it
+# contains the DB password, so the secret template assembles it from
+# postgres.user/postgres.database + secrets.postgresPassword.
 config:
   djangoSettingsModule: uptime.settings
   redisUrl: redis://redis:6379/0
-  databaseUrl: postgres://uptime:uptime@postgres:5432/uptime
+  allowedHosts: "localhost,127.0.0.1,web,.svc,.cluster.local"
 
 # ---- Secret values (PLAINTEXT here; Helm base64-encodes them for you) ----
 # This is a teaching convenience. In real production you'd use sealed-secrets,

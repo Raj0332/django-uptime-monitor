@@ -8,4 +8,6 @@ metadata:
 data:
   DJANGO_SETTINGS_MODULE: {{ .Values.config.djangoSettingsModule | quote }}
   REDIS_URL: {{ .Values.config.redisUrl | quote }}
-  DATABASE_URL: {{ .Values.config.databaseUrl | quote }}
+  ALLOWED_HOSTS: {{ .Values.config.allowedHosts | quote }}
+  # DATABASE_URL lives in the Secret, not here — it embeds the DB password,
+  # and ConfigMaps are not a place for credentials.

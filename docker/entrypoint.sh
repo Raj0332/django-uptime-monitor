@@ -3,8 +3,7 @@ set -e
 
 case "$1" in
   web)
-    echo "Running migrations..."
-    python manage.py makemigrations monitor --noinput
+    echo "Applying migrations..."
     python manage.py migrate --noinput
 
     echo "Collecting static files..."
