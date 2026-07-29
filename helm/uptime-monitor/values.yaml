@@ -5,8 +5,8 @@
 
 # ---- Application image (used by web, celery, beat — they share one image) ----
 image:
-  repository: rajkumar332/uptime-monitor
-  tag: latest
+  repository: rajkm332/uptime-monitor
+  tag: "0.2.0"
   pullPolicy: IfNotPresent   # IfNotPresent = don't re-pull if already on the node
 
 # ---- Non-secret config -> rendered into a ConfigMap ----
