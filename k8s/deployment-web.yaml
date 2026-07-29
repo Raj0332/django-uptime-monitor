@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: rajkumar332/uptime-monitor:latest
+          image: rajkm332/uptime-monitor:latest
           ports:
             - containerPort: 8000
           envFrom:

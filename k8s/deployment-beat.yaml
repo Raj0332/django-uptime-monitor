@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: beat
-          image: rajkumar332/uptime-monitor:latest
+          image: rajkm332/uptime-monitor:latest
           command: ["/entrypoint.sh", "beat"]
           envFrom:
             - configMapRef:
