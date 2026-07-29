@@ -1,0 +1,39 @@
+# ArgoCD Application — the GitOps contract for this project.
+#
+# This tells ArgoCD: "watch the Helm chart at helm/uptime-monitor in this Git
+# repo, render it, and keep the cluster matching it." From then on, `git push`
+# IS the deployment — no kubectl/helm commands against the cluster.
+#
+# NOTE: targetRevision tracks the branch below. Once the chart is merged to
+# main, switch targetRevision to main (GitOps best practice: deploy main only).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: uptime-monitor
+  namespace: argocd            # Application CRs live where ArgoCD runs
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/Raj0332/django-uptime-monitor.git
+    targetRevision: k8s-setup-mac   # switch to "main" after the merge
+    path: helm/uptime-monitor       # ArgoCD detects Chart.yaml -> renders with Helm
+    helm:
+      valueFiles:
+        - values.yaml
+
+  destination:
+    server: https://kubernetes.default.svc   # the cluster ArgoCD itself runs in
+    namespace: uptime
+
+  syncPolicy:
+    automated:
+      prune: true       # delete cluster objects removed from Git
+      selfHeal: true    # revert manual kubectl edits back to Git state
+    syncOptions:
+      - CreateNamespace=true   # create the "uptime" namespace if missing
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
